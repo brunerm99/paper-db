@@ -1,0 +1,36 @@
+version: '3.7'
+services:
+  postgres_container:
+    image: timescale/timescaledb:latest-pg14
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    volumes:
+      - ./local_data/postgresql:/var/lib/postgresql/data      # Persist DB
+      - ./scripts/database/init:/docker-entrypoint-initdb.d   # Initialize DB
+    ports:
+      - 0.0.0.0:5432:5432
+    networks:
+      - paper_network 
+
+  dev_container: # Main container
+    volumes:
+      - .:/paper-db
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./.env
+    environment:
+      FLASK_CONFIG: development
+      FLASK_ENV: development
+    ports:
+      - 0.0.0.0:5006:5000   # Flask
+    command: bash
+    entrypoint: dockerize -wait tcp://postgres_container:5432 -timeout 60s bash /paper-db/scripts/docker/init.sh
+    networks:
+      - paper_network 
+
+networks:
+  paper_network:
+
